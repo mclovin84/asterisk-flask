@@ -30,21 +30,29 @@ def handle_telnyx_webhook():
         })
     
     try:
-        data = request.get_json()
-        logger.info(f"Received event: {data.get('event_type', 'unknown')}")
-        logger.info(f"Call data: {json.dumps(data, indent=2)}")
+        webhook_data = request.get_json()
+        logger.info(f"Received webhook data: {json.dumps(webhook_data, indent=2)}")
+        
+        # Extract event type and payload from the correct structure
+        event_type = webhook_data.get('event_type')
+        payload = webhook_data.get('payload', {})
+        
+        logger.info(f"Processing event: {event_type}")
+        logger.info(f"Payload: {json.dumps(payload, indent=2)}")
         
         # Handle different event types
-        event_type = data.get('event_type')
-        
         if event_type == 'call.initiated':
-            handle_call_initiated(data)
+            logger.info("Handling call.initiated event")
+            return handle_call_initiated(webhook_data)
         elif event_type == 'call.answered':
-            handle_call_answered(data)
+            logger.info("Handling call.answered event")
+            return handle_call_answered(webhook_data)
         elif event_type == 'call.hangup':
-            handle_call_hangup(data)
-        
-        return jsonify({'status': 'success'}), 200
+            logger.info("Handling call.hangup event")
+            return handle_call_hangup(webhook_data)
+        else:
+            logger.info(f"Unhandled event type: {event_type}")
+            return jsonify({'status': 'ignored'}), 200
         
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
@@ -53,30 +61,44 @@ def handle_telnyx_webhook():
 def handle_call_initiated(data):
     """Handle incoming call initiation"""
     try:
-        from_number = data.get('payload', {}).get('from')
-        to_number = data.get('payload', {}).get('to')
+        payload = data.get('payload', {})
+        from_number = payload.get('from')
+        to_number = payload.get('to')
+        call_control_id = payload.get('call_control_id')
+        
         logger.info(f"Incoming call from {from_number} to {to_number}")
+        logger.info(f"Call control ID: {call_control_id}")
         
         # Log to Google Sheets
         log_to_sheet(data)
         
         # Answer the call
-        call_control_id = data.get('payload', {}).get('call_control_id')
         if call_control_id:
+            logger.info(f"Attempting to answer call {call_control_id}")
             answer_call(call_control_id)
+            return jsonify({'status': 'call_answered'}), 200
+        else:
+            logger.error("No call_control_id found in payload")
+            return jsonify({'error': 'No call_control_id'}), 400
             
     except Exception as e:
-        logger.error(f"Failed to log to sheet: {str(e)}")
+        logger.error(f"Failed to handle call initiated: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 def handle_call_answered(data):
     """Handle call answered event"""
-    call_control_id = data.get('payload', {}).get('call_control_id')
-    logger.info(f"Answered call {call_control_id}")
+    payload = data.get('payload', {})
+    call_control_id = payload.get('call_control_id')
+    logger.info(f"Call answered: {call_control_id}")
+    return jsonify({'status': 'call_answered'}), 200
 
 def handle_call_hangup(data):
     """Handle call hangup event"""
-    call_control_id = data.get('payload', {}).get('call_control_id')
-    logger.info(f"Call ended: {call_control_id}")
+    payload = data.get('payload', {})
+    call_control_id = payload.get('call_control_id')
+    hangup_cause = payload.get('hangup_cause', 'unknown')
+    logger.info(f"Call ended: {call_control_id}, cause: {hangup_cause}")
+    return jsonify({'status': 'call_ended'}), 200
 
 def answer_call(call_control_id):
     """Answer incoming call using Telnyx API"""
