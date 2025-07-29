@@ -1,32 +1,21 @@
 version: '3.8'
+
 services:
-  flask:
+  flask-app:
     build: ./flask
     ports:
-      - "5000:5000"
-    volumes:
-      - ./flask:/app
+      - "80:5000"
+      - "443:5000"  # We'll set up SSL later
     environment:
       - TELNYX_API_KEY=${TELNYX_API_KEY}
       - GOOGLE_SHEETS_CREDENTIALS=${GOOGLE_SHEETS_CREDENTIALS}
       - SPREADSHEET_ID=${SPREADSHEET_ID}
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - flask
+      - ./logs:/app/logs
     restart: unless-stopped
+    networks:
+      - app-network
 
-  webhook:
-    image: almir/webhook
-    ports:
-      - "9000:9000"
-    volumes:
-      - /etc/webhook.conf:/etc/webhook.conf
-    restart: unless-stopped
+networks:
+  app-network:
+    driver: bridge
