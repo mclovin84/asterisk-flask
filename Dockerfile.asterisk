@@ -1,0 +1,69 @@
+FROM ubuntu:22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    asterisk \
+    asterisk-modules \
+    asterisk-mysql \
+    asterisk-pjsip \
+    asterisk-voicemail \
+    asterisk-voicemail-imap-storage \
+    asterisk-voicemail-odbc-storage \
+    asterisk-voicemail-sqlite3-storage \
+    asterisk-voicemail-sound-en-gsm \
+    asterisk-voicemail-sound-en-wav \
+    asterisk-voicemail-sound-en-g729 \
+    asterisk-voicemail-sound-en-g722 \
+    asterisk-voicemail-sound-en-g726 \
+    asterisk-voicemail-sound-en-g723 \
+    asterisk-voicemail-sound-en-g726aal2 \
+    asterisk-voicemail-sound-en-g729a \
+    asterisk-voicemail-sound-en-g7221 \
+    asterisk-voicemail-sound-en-g7221c \
+    asterisk-voicemail-sound-en-g7221a \
+    asterisk-voicemail-sound-en-g7221b \
+    asterisk-voicemail-sound-en-g7221d \
+    asterisk-voicemail-sound-en-g7221e \
+    asterisk-voicemail-sound-en-g7221f \
+    asterisk-voicemail-sound-en-g7221g \
+    asterisk-voicemail-sound-en-g7221h \
+    asterisk-voicemail-sound-en-g7221i \
+    asterisk-voicemail-sound-en-g7221j \
+    asterisk-voicemail-sound-en-g7221k \
+    asterisk-voicmail \
+    asterisk-voicemail-imap-storage \
+    asterisk-voicemail-odbc-storage \
+    asterisk-voicemail-sqlite3-storage \
+    asterisk-voicemail-sound-en-gsm \
+    asterisk-voicemail-sound-en-wav \
+    asterisk-voicemail-sound-en-g729 \
+    asterisk-voicemail-sound-en-g722 \
+    asterisk-voicemail-sound-en-g726 \
+    asterisk-voicemail-sound-en-g723 \
+    asterisk-voicemail-sound-en-g726aal2 \
+    asterisk-voicemail-sound-en-g729a \
+    asterisk-voicmail-sound-en-g7221 \
+    asterisk-voicemail-sound-en-g7221c \
+    asterisk-voicemail-sound-en-g7221a \
+    asterisk-voicemail-sound-en-g7221b \
+    asterisk-voicemail-sound-en-g7221d \
+    asterisk-voicemail-sound-en-g7221e \
+    asterisk-voicemail-sound-en-g7221f \
+    asterisk-voicemail-sound-en-g7221g \
+    asterisk-voicemail-sound-en-g7221h \
+    asterisk-voicemail-sound-en-g7221i \
+    asterisk-voicemail-sound-en-g7221j \
+    asterisk-voicemail-sound-en-g7221k \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create necessary directories
+RUN mkdir -p /var/log/asterisk /var/spool/asterisk /var/lib/asterisk
+
+# Copy configuration files
+COPY asterisk-config/ /etc/asterisk/
+
+# Expose ports
+EXPOSE 5060/tcp 5060/udp 10000-20000/udp 5038/tcp
+
+# Start Asterisk
+CMD ["asterisk", "-f"] 

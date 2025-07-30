@@ -1,17 +1,56 @@
 version: '3.8'
 
 services:
+  # Asterisk Service
+  asterisk:
+    build:
+      context: .
+      dockerfile: Dockerfile.asterisk
+    ports:
+      - "5060:5060/udp"  # SIP
+      - "5060:5060/tcp"  # SIP
+      - "10000-20000:10000-20000/udp"  # RTP
+    volumes:
+      - ./asterisk-config:/etc/asterisk
+      - ./logs:/var/log/asterisk
+    environment:
+      - TELNYX_SIP_USER=${TELNYX_SIP_USER}
+      - TELNYX_SIP_PASSWORD=${TELNYX_SIP_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Flask Application
   flask-app:
     build: ./flask
     ports:
-      - "80:5000"
-      - "443:5000"  # We'll set up SSL later
+      - "5000:5000"
     environment:
       - TELNYX_API_KEY=${TELNYX_API_KEY}
       - GOOGLE_SHEETS_CREDENTIALS=${GOOGLE_SHEETS_CREDENTIALS}
       - SPREADSHEET_ID=${SPREADSHEET_ID}
+      - ASTERISK_HOST=asterisk
+      - ASTERISK_PORT=5038
+      - ASTERISK_USER=admin
+      - ASTERISK_PASSWORD=admin
     volumes:
       - ./logs:/app/logs
+    depends_on:
+      - asterisk
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Nginx Reverse Proxy (Optional - for SSL later)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - flask-app
     restart: unless-stopped
     networks:
       - app-network

@@ -1,58 +1,65 @@
 #!/bin/bash
 
-# DigitalOcean Droplet Deployment Script for Asterisk Flask App
+# Simple deployment script for Asterisk + Flask
+# Usage: ./deploy.sh [droplet-ip]
 
-echo "🚀 Deploying Asterisk Flask App to DigitalOcean Droplet..."
+set -e
 
-# Update system
-echo "📦 Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+DROPLET_IP=${1:-"147.182.184.153"}
+SSH_KEY="newSSH"
 
-# Install Docker
-echo "🐳 Installing Docker..."
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
+echo "🚀 Deploying Asterisk + Flask to $DROPLET_IP"
 
-# Install Docker Compose
-echo "📦 Installing Docker Compose..."
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Create app directory
-echo "📁 Setting up application directory..."
-mkdir -p /opt/asterisk-flask
-cd /opt/asterisk-flask
-
-# Copy application files (you'll need to upload these)
-echo "📋 Application files should be uploaded to /opt/asterisk-flask/"
-
-# Create logs directory
-mkdir -p logs
-
-# Set up environment file
-echo "🔧 Setting up environment variables..."
-if [ ! -f .env ]; then
-    echo "Creating .env file from template..."
-    cp env.example .env
-    echo "⚠️  Please edit .env file with your actual API keys!"
-    echo "   nano .env"
+# Check if SSH key exists
+if [ ! -f "$SSH_KEY" ]; then
+    echo "❌ SSH key $SSH_KEY not found!"
+    echo "Please make sure your SSH key is in the current directory"
+    exit 1
 fi
 
-# Build and start the application
-echo "🔨 Building and starting the application..."
-sudo docker-compose up -d --build
+# Copy files to droplet
+echo "📁 Copying files to droplet..."
+scp -i $SSH_KEY -r . root@$DROPLET_IP:/opt/asterisk-flask/
 
-# Set up firewall
-echo "🔥 Configuring firewall..."
-sudo ufw allow 22/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw --force enable
+# SSH to droplet and deploy
+echo "🔧 Deploying on droplet..."
+ssh -i $SSH_KEY root@$DROPLET_IP << 'EOF'
+    cd /opt/asterisk-flask
+    
+    # Install Docker if not installed
+    if ! command -v docker &> /dev/null; then
+        echo "🐳 Installing Docker..."
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh
+        systemctl start docker
+        systemctl enable docker
+    fi
+    
+    # Install Docker Compose if not installed
+    if ! command -v docker-compose &> /dev/null; then
+        echo "📦 Installing Docker Compose..."
+        curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+    fi
+    
+    # Stop any existing containers
+    echo "🛑 Stopping existing containers..."
+    docker-compose down || true
+    
+    # Build and start containers
+    echo "🔨 Building and starting containers..."
+    docker-compose up -d --build
+    
+    # Wait for services to start
+    echo "⏳ Waiting for services to start..."
+    sleep 30
+    
+    # Check status
+    echo "📊 Checking service status..."
+    docker-compose ps
+    docker-compose logs --tail=20
+EOF
 
 echo "✅ Deployment complete!"
-echo "🌐 Your app should be running on http://$(curl -s ifconfig.me)"
-echo "📝 Don't forget to:"
-echo "   1. Edit .env file with your API keys"
-echo "   2. Update Telnyx webhook URL to your droplet's IP"
-echo "   3. Set up a domain name (optional but recommended)" 
+echo "📞 Test your phone system by calling +1 480 786 8280"
+echo "🌐 Flask app should be available at http://$DROPLET_IP:5000" 
