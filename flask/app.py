@@ -155,5 +155,40 @@ def log_to_sheet(data):
     except Exception as e:
         logger.error(f"Error logging to sheet: {str(e)}")
 
+@app.route('/asterisk/call', methods=['GET', 'POST'])
+def asterisk_call():
+    """Handle calls from Asterisk via AGI"""
+    try:
+        # Get call data from Asterisk
+        callerid = request.args.get('callerid', 'Unknown')
+        extension = request.args.get('extension', 'Unknown')
+        
+        logger.info(f"Asterisk call from {callerid} to {extension}")
+        
+        # Create log entry
+        log_entry = {
+            "caller_id": callerid,
+            "extension": extension,
+            "timestamp": datetime.now().isoformat(),
+            "source": "asterisk",
+            "logged_at": datetime.now().isoformat()
+        }
+        
+        logger.info(f"Would log to sheet: {log_entry}")
+        
+        # Actually log to Google Sheets
+        try:
+            log_to_sheet(log_entry)
+            logger.info("Successfully logged to Google Sheets")
+        except Exception as e:
+            logger.error(f"Failed to log to Google Sheets: {e}")
+        
+        # Return multiple responses to make the call last longer
+        return "200 result=1\n200 result=1\n200 result=1\n200 result=1\n200 result=1\n200 result=1\n200 result=1\n200 result=1\n200 result=1\n200 result=1"
+        
+    except Exception as e:
+        logger.error(f"Error handling Asterisk call: {str(e)}")
+        return "200 result=0\n"
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
