@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""
+AGI script to proxy calls to Flask app
+"""
+import sys
+import requests
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def main():
+    try:
+        # Read AGI environment variables
+        callerid = sys.argv[1] if len(sys.argv) > 1 else "Unknown"
+        extension = sys.argv[2] if len(sys.argv) > 2 else "Unknown"
+        
+        logger.info(f"AGI call from {callerid} to {extension}")
+        
+        # Call Flask app
+        url = "http://localhost:80/asterisk/call"
+        params = {
+            'callerid': callerid,
+            'extension': extension
+        }
+        
+        logger.info(f"Calling Flask app: {url}")
+        response = requests.get(url, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            logger.info(f"Flask app responded: {response.text}")
+            # Return success
+            print("200 result=1")
+        else:
+            logger.error(f"Flask app error: {response.status_code}")
+            print("200 result=0")
+            
+    except Exception as e:
+        logger.error(f"AGI error: {e}")
+        print("200 result=0")
+
+if __name__ == "__main__":
+    main() 
